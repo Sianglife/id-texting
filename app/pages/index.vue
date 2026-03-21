@@ -131,11 +131,11 @@ const textRect = reactive<Rect>({ x: 0, y: 0, width: 0, height: 0 });
 const resizeHandleRect = reactive<Rect>({ x: 0, y: 0, width: 16, height: 16 });
 
 const overlay = reactive<TextOverlay>({
-	text: "Sample text",
+	text: "僅供 使用",
 	x: 24,
 	y: 24,
 	fontSize: 40,
-	color: "#ffffff",
+	color: "#ff0000",
 	fontFamily: "system-ui, sans-serif",
 	fontWeight: "700"
 });
