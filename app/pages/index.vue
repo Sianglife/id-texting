@@ -59,11 +59,19 @@
 			</label>
 
 			<label class="mb-4 grid gap-1.5">
-				<span class="text-[0.92rem]" :class="isDark ? 'text-[#c4cdd7]' : 'text-[#594f45]'">文字</span>
+				<span class="text-[0.92rem]" :class="!image ? (isDark ? 'text-[#7c8794]' : 'text-[#a3988a]') : isDark ? 'text-[#c4cdd7]' : 'text-[#594f45]'">文字</span>
 				<input
 					ref="textInputRef"
 					class="rounded-[10px] border px-3 py-2"
-					:class="isDark ? 'border-[#4f5967] bg-[#131820] text-[#e8edf2]' : 'border-[#cdbfae] bg-white text-[#2f2a25]'"
+					:class="
+						!image
+							? isDark
+								? 'border-[#3f4752] bg-[#10151b] text-[#7c8794] placeholder:text-[#68727e]'
+								: 'border-[#ddd3c7] bg-[#f3eee7] text-[#a3988a] placeholder:text-[#b6ab9d]'
+							: isDark
+								? 'border-[#4f5967] bg-[#131820] text-[#e8edf2]'
+								: 'border-[#cdbfae] bg-white text-[#2f2a25]'
+					"
 					v-model="overlay.text"
 					type="text"
 					placeholder="輸入要加在圖片上的文字"
@@ -72,8 +80,14 @@
 			</label>
 
 			<label class="mb-4 grid gap-1.5">
-				<span class="text-[0.92rem]" :class="isDark ? 'text-[#c4cdd7]' : 'text-[#594f45]'">文字顏色</span>
-				<input class="h-9 w-full rounded-[10px] border p-1" :class="isDark ? 'border-[#4f5967] bg-[#131820]' : 'border-[#cdbfae] bg-white'" v-model="overlay.color" type="color" :disabled="!image" />
+				<span class="text-[0.92rem]" :class="!image ? (isDark ? 'text-[#7c8794]' : 'text-[#a3988a]') : isDark ? 'text-[#c4cdd7]' : 'text-[#594f45]'">文字顏色</span>
+				<input
+					class="h-9 w-full rounded-[10px] border p-1"
+					:class="!image ? (isDark ? 'border-[#3f4752] bg-[#10151b]' : 'border-[#ddd3c7] bg-[#f3eee7]') : isDark ? 'border-[#4f5967] bg-[#131820]' : 'border-[#cdbfae] bg-white'"
+					v-model="overlay.color"
+					type="color"
+					:disabled="!image"
+				/>
 			</label>
 
 			<div class="mt-2 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
