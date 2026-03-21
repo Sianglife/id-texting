@@ -2,7 +2,7 @@
 	<main class="grid min-h-screen grid-cols-1 gap-4 p-5 lg:grid-cols-[minmax(280px,380px)_1fr]" :class="isDark ? 'bg-[#14181d] text-[#e8edf2]' : 'bg-[#f8f8f6] text-[#2f2a25]'">
 		<section class="rounded-2xl border p-4" :class="isDark ? 'border-[#3a424c] bg-[#1d232b]' : 'border-[#d7ccbf] bg-white'">
 			<div class="mb-2 flex items-center justify-between gap-2">
-				<h1 class="m-0 text-2xl">圖上字</h1>
+				<h1 class="m-0 my-2 text-2xl">圖上字</h1>
 				<button
 					type="button"
 					class="rounded-[10px] border px-3 py-1.5 text-sm"
@@ -28,7 +28,6 @@
 					</svg>
 				</button>
 			</div>
-			<p class="mb-3 mt-2 text-sm" :class="isDark ? 'text-[#a9b3bf]' : 'text-[#6c5f52]'">Upload a photo, enter your text, then drag text on the preview.</p>
 
 			<label class="mb-4 grid gap-1.5">
 				<span class="text-[0.92rem]" :class="isDark ? 'text-[#c4cdd7]' : 'text-[#594f45]'">Photo</span>
