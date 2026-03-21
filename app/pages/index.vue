@@ -32,18 +32,37 @@
 
 			<label class="mb-4 grid gap-1.5">
 				<span class="text-[0.92rem]" :class="isDark ? 'text-[#c4cdd7]' : 'text-[#594f45]'">Photo</span>
-				<input
-					class="rounded-[10px] border px-3 py-2"
-					:class="isDark ? 'border-[#4f5967] bg-[#131820] text-[#e8edf2]' : 'border-[#cdbfae] bg-white text-[#2f2a25]'"
-					type="file"
-					accept="image/png,image/jpeg,image/webp"
-					@change="onFileSelected"
-				/>
+				<div class="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-2 overflow-hidden">
+					<input
+						class="w-full min-w-0 max-w-full rounded-[10px] border px-3 py-2"
+						:class="isDark ? 'border-[#4f5967] bg-[#131820] text-[#e8edf2]' : 'border-[#cdbfae] bg-white text-[#2f2a25]'"
+						type="file"
+						accept="image/png,image/jpeg,image/webp"
+						@change="onFileSelected"
+					/>
+					<button
+						type="button"
+						class="inline-flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-[10px] border disabled:cursor-not-allowed disabled:opacity-50"
+						:class="isDark ? 'border-[#4f5967] bg-[#131820] text-[#e8edf2]' : 'border-[#cdbfae] bg-white text-[#2f2a25]'"
+						:disabled="busy"
+						aria-label="Import image from clipboard"
+						title="Import image from clipboard"
+						@click="importImageFromClipboard"
+					>
+						<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+							<rect x="8" y="3" width="8" height="4" rx="1" />
+							<path d="M8 5H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" />
+							<path d="M9 12h6" />
+							<path d="M9 16h6" />
+						</svg>
+					</button>
+				</div>
 			</label>
 
 			<label class="mb-4 grid gap-1.5">
 				<span class="text-[0.92rem]" :class="isDark ? 'text-[#c4cdd7]' : 'text-[#594f45]'">Text</span>
 				<input
+					ref="textInputRef"
 					class="rounded-[10px] border px-3 py-2"
 					:class="isDark ? 'border-[#4f5967] bg-[#131820] text-[#e8edf2]' : 'border-[#cdbfae] bg-white text-[#2f2a25]'"
 					v-model="overlay.text"
@@ -97,6 +116,7 @@
 					@pointerup="onPointerUp"
 					@pointercancel="onPointerUp"
 					@pointerleave="onPointerUp"
+					@dblclick="onCanvasDoubleClick"
 				/>
 			</div>
 
@@ -123,6 +143,7 @@ import {
 } from "../utils/canvasComposer";
 
 const canvasRef = ref<HTMLCanvasElement | null>(null);
+const textInputRef = ref<HTMLInputElement | null>(null);
 const previewHostRef = ref<HTMLElement | null>(null);
 
 const image = ref<HTMLImageElement | null>(null);
@@ -331,6 +352,58 @@ async function onFileSelected(event: Event) {
 	}
 }
 
+async function importImageFromClipboard() {
+	clearMessages();
+
+	if (!navigator.clipboard || typeof navigator.clipboard.read !== "function") {
+		setError("Clipboard image import is not supported in this browser.");
+		return;
+	}
+
+	busy.value = true;
+
+	try {
+		const items = await navigator.clipboard.read();
+		let imageBlob: Blob | null = null;
+
+		for (const item of items) {
+			const imageType = item.types.find(type => type.startsWith("image/"));
+
+			if (!imageType) {
+				continue;
+			}
+
+			imageBlob = await item.getType(imageType);
+			break;
+		}
+
+		if (!imageBlob) {
+			setError("Clipboard does not contain an image.");
+			return;
+		}
+
+		if (imageBlob.size > 12 * 1024 * 1024) {
+			setError("Image must be smaller than 12MB.");
+			return;
+		}
+
+		const type = imageBlob.type || "image/png";
+		const extension = type.includes("/") ? type.split("/")[1] : "png";
+		const file = new File([imageBlob], `clipboard-image.${extension}`, { type });
+
+		image.value = await loadImageFromFile(file);
+		await nextTick();
+		redraw();
+		initializeOverlayPosition();
+		redraw();
+		setStatus("Image imported from clipboard. Drag text box to move, drag corner handle to resize.");
+	} catch {
+		setError("Failed to read image from clipboard. Browser may require HTTPS or permission.");
+	} finally {
+		busy.value = false;
+	}
+}
+
 function onPointerDown(event: PointerEvent) {
 	if (!image.value) {
 		return;
@@ -401,6 +474,41 @@ function onPointerUp(event: PointerEvent) {
 	drag.active = false;
 	updateCanvasCursor(getCanvasPoint(event));
 	canvasRef.value?.releasePointerCapture(event.pointerId);
+}
+
+function onCanvasDoubleClick(event: MouseEvent) {
+	if (!image.value) {
+		return;
+	}
+
+	const canvas = canvasRef.value;
+
+	if (!canvas) {
+		return;
+	}
+
+	const rect = canvas.getBoundingClientRect();
+
+	if (rect.width <= 0 || rect.height <= 0) {
+		return;
+	}
+
+	const pointX = event.clientX - rect.left;
+	const pointY = event.clientY - rect.top;
+
+	if (!pointHitsRect(pointX, pointY, textRect, 10)) {
+		return;
+	}
+
+	const input = textInputRef.value;
+
+	if (!input) {
+		return;
+	}
+
+	input.focus();
+	const textLength = input.value.length;
+	input.setSelectionRange(textLength, textLength);
 }
 
 function formatDownloadName() {
