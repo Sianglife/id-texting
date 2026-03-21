@@ -142,7 +142,7 @@ import {
 	renderPreview,
 	type Rect,
 	type Size,
-	type TextOverlay
+	type TextOverlay,
 } from "../utils/canvasComposer";
 
 const canvasRef = ref<HTMLCanvasElement | null>(null);
@@ -161,7 +161,7 @@ const overlay = reactive<TextOverlay>({
 	fontSize: 40,
 	color: "#ff0000",
 	fontFamily: "system-ui, sans-serif",
-	fontWeight: "700"
+	fontWeight: "700",
 });
 
 const busy = ref(false);
@@ -176,7 +176,7 @@ const drag = reactive({
 	offsetY: 0,
 	startX: 0,
 	startY: 0,
-	startFontSize: 40
+	startFontSize: 40,
 });
 
 let resizeObserver: ResizeObserver | null = null;
@@ -232,7 +232,7 @@ function redraw() {
 		canvas: canvasRef.value,
 		image: image.value,
 		overlay,
-		size: previewSize
+		size: previewSize,
 	});
 
 	textRect.x = rect.x;
@@ -256,7 +256,7 @@ function redraw() {
 			canvas: canvasRef.value,
 			image: image.value,
 			overlay,
-			size: previewSize
+			size: previewSize,
 		});
 
 		textRect.x = correctedRect.x;
@@ -291,7 +291,7 @@ function getCanvasPoint(event: PointerEvent): { x: number; y: number } | null {
 
 	return {
 		x: event.clientX - rect.left,
-		y: event.clientY - rect.top
+		y: event.clientY - rect.top,
 	};
 }
 
@@ -534,7 +534,7 @@ async function downloadImage() {
 			image: image.value,
 			overlay,
 			previewSize,
-			mimeType: "image/png"
+			mimeType: "image/png",
 		});
 
 		const url = URL.createObjectURL(blob);
@@ -570,13 +570,13 @@ async function copyToClipboard() {
 			image: image.value,
 			overlay,
 			previewSize,
-			mimeType: "image/png"
+			mimeType: "image/png",
 		});
 
 		await navigator.clipboard.write([
 			new ClipboardItem({
-				"image/png": blob
-			})
+				"image/png": blob,
+			}),
 		]);
 
 		setStatus("Image copied to clipboard.");
@@ -595,7 +595,7 @@ watch(
 		}
 
 		redraw();
-	}
+	},
 );
 
 onMounted(() => {

@@ -7,9 +7,9 @@ export default defineNuxtConfig({
 		[
 			"@nuxtjs/google-analytics",
 			{
-				id: "G-WSWKZM1V4W"
-			}
-		]
+				id: "G-WSWKZM1V4W",
+			},
+		],
 	],
-	css: ["~/assets/css/main.css"]
+	css: ["~/assets/css/main.css"],
 });

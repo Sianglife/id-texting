@@ -46,7 +46,7 @@ export function fitWithin(sourceWidth: number, sourceHeight: number, maxWidth: n
 
 	return {
 		width: Math.max(1, Math.floor(sourceWidth * scale)),
-		height: Math.max(1, Math.floor(sourceHeight * scale))
+		height: Math.max(1, Math.floor(sourceHeight * scale)),
 	};
 }
 
@@ -102,7 +102,7 @@ export function renderPreview(options: RenderPreviewOptions): Rect {
 		x: overlay.x,
 		y: overlay.y,
 		width: textWidth,
-		height: textHeight
+		height: textHeight,
 	};
 
 	if (showOverlayGuides && text.length > 0) {
@@ -140,7 +140,7 @@ export function getResizeHandleRect(rect: Rect, size = 16): Rect {
 		x: rect.x + rect.width - size / 2,
 		y: rect.y + rect.height - size / 2,
 		width: size,
-		height: size
+		height: size,
 	};
 }
 
@@ -159,7 +159,7 @@ export function clampOverlayPosition(overlay: TextOverlay, bounds: Size, textRec
 	return {
 		...overlay,
 		x: Math.min(maxX, Math.max(0, overlay.x)),
-		y: Math.min(maxY, Math.max(0, overlay.y))
+		y: Math.min(maxY, Math.max(0, overlay.y)),
 	};
 }
 
@@ -189,7 +189,7 @@ export async function exportCompositionBlob(options: ExportOptions): Promise<Blo
 		...overlay,
 		x: overlay.x * scale,
 		y: overlay.y * scale,
-		fontSize: overlay.fontSize * scale
+		fontSize: overlay.fontSize * scale,
 	};
 
 	ctx.font = `${exportOverlay.fontWeight} ${exportOverlay.fontSize}px ${exportOverlay.fontFamily}`;
