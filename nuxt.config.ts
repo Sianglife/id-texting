@@ -30,10 +30,6 @@ export default defineNuxtConfig({
 					name: "language",
 					content: "zh-TW",
 				},
-				{
-					httpEquiv: "X-UA-Compatible",
-					content: "ie=edge",
-				},
 			],
 			link: [
 				{
