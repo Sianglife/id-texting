@@ -61,7 +61,7 @@
 			<div class="mb-4 grid gap-1.5">
 				<div class="flex items-center justify-between gap-2">
 					<span class="text-[0.92rem]" :class="!image ? (isDark ? 'text-[#7c8794]' : 'text-[#a3988a]') : isDark ? 'text-[#c4cdd7]' : 'text-[#594f45]'">文字</span>
-					<div class="relative" ref="presetPickerRef">
+					<div class="relative" ref="templatePickerRef">
 						<button
 							type="button"
 							class="inline-flex h-[34px] w-[34px] items-center justify-center rounded-[10px] border text-lg leading-none disabled:cursor-not-allowed disabled:opacity-50"
@@ -69,13 +69,13 @@
 							:disabled="busy"
 							aria-label="新增文字框"
 							title="新增文字框"
-							@click="openPresetPicker"
+							@click="openTemplatePicker"
 						>
 							+
 						</button>
 
 						<div
-							v-if="isPresetPickerOpen"
+							v-if="isTemplatePickerOpen"
 							class="absolute right-0 top-[44px] z-30 w-[280px] rounded-[14px] border p-2.5 shadow-[0_10px_30px_rgba(0,0,0,0.22)]"
 							:class="isDark ? 'border-[#4f5967] bg-[#1a2027] text-[#e8edf2]' : 'border-[#cdbfae] bg-[#fffdf8] text-[#2f2a25]'"
 						>
@@ -83,14 +83,20 @@
 							<p class="mb-2 text-xs" :class="isDark ? 'text-[#aab6c4]' : 'text-[#6f6255]'">選一個文字來新增</p>
 							<div class="grid max-h-[220px] gap-1.5 overflow-auto">
 								<button
-									v-for="item in presetTextOptionsList"
+									v-for="item in templateTextOptionsList"
 									:key="item.id"
 									type="button"
 									class="rounded-[10px] border px-2.5 py-2 text-left"
 									:class="
-										selectedPresetId === item.id ? (isDark ? 'border-[#8ea0b6] bg-[#222b35]' : 'border-[#8b7761] bg-[#f3ede4]') : isDark ? 'border-[#4f5967] bg-[#131820]' : 'border-[#d8cdbf] bg-white'
+										selectedTemplateId === item.id
+											? isDark
+												? 'border-[#8ea0b6] bg-[#222b35]'
+												: 'border-[#8b7761] bg-[#f3ede4]'
+											: isDark
+												? 'border-[#4f5967] bg-[#131820]'
+												: 'border-[#d8cdbf] bg-white'
 									"
-									@click="selectPresetAndAdd(item.id)"
+									@click="selectTemplateAndAdd(item.id)"
 								>
 									<div class="text-sm font-semibold">{{ item.label }}</div>
 									<div class="mt-0.5 text-xs" :class="isDark ? 'text-[#aab6c4]' : 'text-[#6f6255]'">{{ item.text || "(空白)" }}</div>
@@ -174,6 +180,14 @@
 			</p>
 			<p v-if="errorMessage" class="mt-3 text-[0.92rem] text-[#9b2226]">{{ errorMessage }}</p>
 			<p class="mt-4 text-sm leading-relaxed" :class="isDark ? 'text-[#e7a95d]' : 'text-[#8a4b00]'">此工具完全在你的裝置運行，不會將您的圖片上傳到伺服器，敬請安心使用</p>
+			<button
+				type="button"
+				class="mt-2 cursor-pointer rounded-[10px] border px-3 py-2 text-sm"
+				:class="isDark ? 'border-[#708094] bg-[#12171d] text-[#dce4ed]' : 'border-[#2f2a25] bg-[#fffdf8] text-[#2f2a25]'"
+				@click="resetWorkspace"
+			>
+				重設畫面
+			</button>
 		</section>
 
 		<section class="flex flex-col justify-center rounded-2xl border p-4" :class="isDark ? 'border-[#3a424c] bg-[#1d232b]' : 'border-[#d7ccbf] bg-white'" ref="previewHostRef">
@@ -202,7 +216,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
-import presetTextOptions from "../data/textPresets.json";
+import textTemplates from "../data/textTemplates.json";
 import {
 	clampOverlayPosition,
 	exportCompositionBlob,
@@ -217,7 +231,7 @@ import {
 	type TextOverlay,
 } from "../utils/canvasComposer";
 
-type PresetTextOption = {
+type TemplateTextOption = {
 	id: string;
 	label: string;
 	text: string;
@@ -228,10 +242,17 @@ type PresetTextOption = {
 	};
 };
 
+type PersistedOverlayState = {
+	overlays: TextOverlay[];
+	activeOverlayIndex: number;
+};
+
+const OVERLAY_STATE_STORAGE_KEY = "id-texting-overlay-state-v1";
+
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 const previewHostRef = ref<HTMLElement | null>(null);
 const textInputRefs = ref<Array<HTMLInputElement | null>>([]);
-const presetPickerRef = ref<HTMLElement | null>(null);
+const templatePickerRef = ref<HTMLElement | null>(null);
 
 const image = ref<HTMLImageElement | null>(null);
 const previewSize = reactive<Size>({ width: 0, height: 0 });
@@ -250,12 +271,34 @@ const createDefaultOverlay = (text = ""): TextOverlay => ({
 
 const overlays = ref<TextOverlay[]>([]);
 const activeOverlayIndex = ref(0);
-const isPresetPickerOpen = ref(false);
-const selectedPresetId = ref<string>("");
-const pendingPresetOverlayIndex = ref<number | null>(null);
-const presetTextOptionsList = presetTextOptions as PresetTextOption[];
+const isTemplatePickerOpen = ref(false);
+const selectedTemplateId = ref<string>("");
+const pendingTemplateOverlayIndex = ref<number | null>(null);
+const templateTick = ref(Date.now());
+const templateTextOptionsList = computed<TemplateTextOption[]>(() => {
+	void templateTick.value;
+
+	return (textTemplates as TemplateTextOption[]).map(item => {
+		if (item.id === "date-roc-number") {
+			return {
+				...item,
+				text: getCurrentRocDateText(),
+			};
+		}
+
+		if (item.id === "date-gregorian-number") {
+			return {
+				...item,
+				text: getCurrentGregorianDateText(),
+			};
+		}
+
+		return item;
+	});
+});
 const isDev = import.meta.dev;
 const selectedOverlay = computed(() => overlays.value[activeOverlayIndex.value] ?? null);
+const hasRestoredOverlayState = ref(false);
 
 const busy = ref(false);
 const status = ref("");
@@ -274,6 +317,23 @@ const drag = reactive({
 });
 
 let resizeObserver: ResizeObserver | null = null;
+let templateClockTimer: ReturnType<typeof setInterval> | null = null;
+
+function getCurrentRocDateText() {
+	const now = new Date();
+	const rocYear = now.getFullYear() - 1911;
+	const month = (now.getMonth() + 1).toString().padStart(2, "0");
+	const day = now.getDate().toString().padStart(2, "0");
+	return `${rocYear}/${month}/${day}`;
+}
+
+function getCurrentGregorianDateText() {
+	const now = new Date();
+	const year = now.getFullYear();
+	const month = (now.getMonth() + 1).toString().padStart(2, "0");
+	const day = now.getDate().toString().padStart(2, "0");
+	return `${year}/${month}/${day}`;
+}
 
 function setTextInputRef(element: Element | null, index: number) {
 	textInputRefs.value[index] = element as HTMLInputElement | null;
@@ -312,21 +372,126 @@ function initializeOverlayPositions() {
 	}
 }
 
-function openPresetPicker() {
-	if (isPresetPickerOpen.value) {
-		closePresetPicker();
+function persistOverlayState() {
+	if (typeof window === "undefined") {
+		return;
+	}
+
+	const payload: PersistedOverlayState = {
+		overlays: overlays.value.map(overlay => ({ ...overlay })),
+		activeOverlayIndex: activeOverlayIndex.value,
+	};
+
+	window.localStorage.setItem(OVERLAY_STATE_STORAGE_KEY, JSON.stringify(payload));
+}
+
+function restoreOverlayState() {
+	if (typeof window === "undefined") {
+		return;
+	}
+
+	const raw = window.localStorage.getItem(OVERLAY_STATE_STORAGE_KEY);
+
+	if (!raw) {
+		return;
+	}
+
+	try {
+		const parsed = JSON.parse(raw) as Partial<PersistedOverlayState>;
+
+		if (!Array.isArray(parsed.overlays)) {
+			return;
+		}
+
+		overlays.value = parsed.overlays
+			.filter(overlay => overlay && typeof overlay === "object")
+			.map(overlay => {
+				const normalized = createDefaultOverlay(typeof overlay.text === "string" ? overlay.text : "");
+
+				if (typeof overlay.x === "number") {
+					normalized.x = overlay.x;
+				}
+
+				if (typeof overlay.y === "number") {
+					normalized.y = overlay.y;
+				}
+
+				if (typeof overlay.fontSize === "number") {
+					normalized.fontSize = overlay.fontSize;
+				}
+
+				if (typeof overlay.color === "string") {
+					normalized.color = overlay.color;
+				}
+
+				if (typeof overlay.fontFamily === "string") {
+					normalized.fontFamily = overlay.fontFamily;
+				}
+
+				if (typeof overlay.fontWeight === "string") {
+					normalized.fontWeight = overlay.fontWeight;
+				}
+
+				return normalized;
+			});
+
+		const fallbackIndex = overlays.value.length > 0 ? overlays.value.length - 1 : 0;
+		const restoredIndex = typeof parsed.activeOverlayIndex === "number" ? parsed.activeOverlayIndex : 0;
+		activeOverlayIndex.value = Math.max(0, Math.min(restoredIndex, fallbackIndex));
+		hasRestoredOverlayState.value = overlays.value.length > 0;
+	} catch {
+		window.localStorage.removeItem(OVERLAY_STATE_STORAGE_KEY);
+	}
+}
+
+function resetWorkspace() {
+	closeTemplatePicker();
+	image.value = null;
+	overlays.value = [];
+	textInputRefs.value = [];
+	activeOverlayIndex.value = 0;
+	selectedTemplateId.value = "";
+	previewSize.width = 0;
+	previewSize.height = 0;
+	textRects.value = [];
+	resizeHandleRect.x = 0;
+	resizeHandleRect.y = 0;
+	resizeHandleRect.width = 16;
+	resizeHandleRect.height = 16;
+	drag.active = false;
+	clearMessages();
+
+	if (typeof window !== "undefined") {
+		window.localStorage.removeItem(OVERLAY_STATE_STORAGE_KEY);
+	}
+
+	hasRestoredOverlayState.value = false;
+
+	const canvas = canvasRef.value;
+
+	if (canvas) {
+		const ctx = canvas.getContext("2d");
+		ctx?.clearRect(0, 0, canvas.width, canvas.height);
+	}
+
+	setStatus("畫面已重設。");
+}
+
+function openTemplatePicker() {
+	if (isTemplatePickerOpen.value) {
+		closeTemplatePicker();
 		return;
 	}
 
 	addOverlayInput("");
-	pendingPresetOverlayIndex.value = activeOverlayIndex.value;
-	selectedPresetId.value = presetTextOptionsList[0]?.id ?? "";
-	isPresetPickerOpen.value = true;
+	pendingTemplateOverlayIndex.value = activeOverlayIndex.value;
+	selectedTemplateId.value = templateTextOptionsList.value[0]?.id ?? "";
+	isTemplatePickerOpen.value = true;
 }
 
-function closePresetPicker() {
-	isPresetPickerOpen.value = false;
-	pendingPresetOverlayIndex.value = null;
+function closeTemplatePicker() {
+	isTemplatePickerOpen.value = false;
+	pendingTemplateOverlayIndex.value = null;
 }
 
 function addOverlayInput(text = "") {
@@ -344,17 +509,17 @@ function addOverlayInput(text = "") {
 	});
 }
 
-function selectPresetAndAdd(presetId: string) {
-	selectedPresetId.value = presetId;
+function selectTemplateAndAdd(templateId: string) {
+	selectedTemplateId.value = templateId;
 
-	const targetIndex = pendingPresetOverlayIndex.value;
+	const targetIndex = pendingTemplateOverlayIndex.value;
 
 	if (targetIndex === null) {
-		closePresetPicker();
+		closeTemplatePicker();
 		return;
 	}
 
-	const selected = presetTextOptionsList.find(item => item.id === presetId);
+	const selected = templateTextOptionsList.value.find(item => item.id === templateId);
 	const targetOverlay = overlays.value[targetIndex];
 
 	if (targetOverlay) {
@@ -372,26 +537,26 @@ function selectPresetAndAdd(presetId: string) {
 		setActiveOverlay(targetIndex);
 	}
 
-	closePresetPicker();
+	closeTemplatePicker();
 }
 
 function onGlobalPointerDown(event: PointerEvent) {
-	if (!isPresetPickerOpen.value) {
+	if (!isTemplatePickerOpen.value) {
 		return;
 	}
 
 	const target = event.target as Node | null;
 
 	if (!target) {
-		closePresetPicker();
+		closeTemplatePicker();
 		return;
 	}
 
-	if (presetPickerRef.value?.contains(target)) {
+	if (templatePickerRef.value?.contains(target)) {
 		return;
 	}
 
-	closePresetPicker();
+	closeTemplatePicker();
 }
 
 function removeOverlayInput(index: number) {
@@ -411,6 +576,8 @@ function removeOverlayInput(index: number) {
 	if (image.value) {
 		redraw();
 	}
+
+	persistOverlayState();
 }
 
 function setStatus(message: string) {
@@ -579,7 +746,11 @@ async function onFileSelected(event: Event) {
 		image.value = await loadImageFromFile(file);
 		await nextTick();
 		redraw();
-		initializeOverlayPositions();
+
+		if (!hasRestoredOverlayState.value) {
+			initializeOverlayPositions();
+		}
+
 		redraw();
 		setStatus("圖片已載入");
 	} catch {
@@ -631,7 +802,11 @@ async function importImageFromClipboard() {
 		image.value = await loadImageFromFile(file);
 		await nextTick();
 		redraw();
-		initializeOverlayPositions();
+
+		if (!hasRestoredOverlayState.value) {
+			initializeOverlayPositions();
+		}
+
 		redraw();
 		setStatus("貼上完成");
 	} catch {
@@ -751,6 +926,7 @@ function onPointerUp(event: PointerEvent) {
 	drag.active = false;
 	updateCanvasCursor(getCanvasPoint(event));
 	canvasRef.value?.releasePointerCapture(event.pointerId);
+	persistOverlayState();
 }
 
 function onCanvasDoubleClick(event: MouseEvent) {
@@ -870,24 +1046,31 @@ async function copyToClipboard() {
 watch(
 	overlays,
 	() => {
-		if (!image.value) {
-			return;
+		if (image.value) {
+			redraw();
 		}
 
-		redraw();
+		if (!drag.active) {
+			persistOverlayState();
+		}
 	},
 	{ deep: true },
 );
 
 watch(activeOverlayIndex, () => {
-	if (!image.value) {
-		return;
+	if (image.value) {
+		redraw();
 	}
 
-	redraw();
+	persistOverlayState();
 });
 
 onMounted(() => {
+	restoreOverlayState();
+	templateClockTimer = setInterval(() => {
+		templateTick.value = Date.now();
+	}, 30 * 1000);
+
 	if (typeof window !== "undefined") {
 		window.addEventListener("pointerdown", onGlobalPointerDown);
 	}
@@ -914,6 +1097,11 @@ onMounted(() => {
 onBeforeUnmount(() => {
 	if (typeof window !== "undefined") {
 		window.removeEventListener("pointerdown", onGlobalPointerDown);
+	}
+
+	if (templateClockTimer) {
+		clearInterval(templateClockTimer);
+		templateClockTimer = null;
 	}
 
 	resizeObserver?.disconnect();

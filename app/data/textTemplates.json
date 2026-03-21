@@ -38,5 +38,16 @@
 			"x": 22,
 			"y": 175
 		}
+	},
+
+	{
+		"id": "date-gregorian-number",
+		"label": "日期標記(西元年)",
+		"text": "2024/03/21",
+		"fontSize": 16,
+		"position": {
+			"x": 22,
+			"y": 175
+		}
 	}
 ]
