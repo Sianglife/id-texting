@@ -7,11 +7,11 @@
 					type="button"
 					class="rounded-[10px] border px-3 py-1.5 text-sm"
 					:class="isDark ? 'border-[#596575] bg-[#12171d] text-[#dce4ed]' : 'border-[#2f2a25] bg-white text-[#2f2a25]'"
-					:aria-label="isDark ? 'Switch to light mode' : 'Switch to dark mode'"
-					:title="isDark ? 'Switch to light mode' : 'Switch to dark mode'"
+					:aria-label="isDark ? '切換為淺色模式' : '切換為深色模式'"
+					:title="isDark ? '切換為淺色模式' : '切換為深色模式'"
 					@click="isDark = !isDark"
 				>
-					<span class="sr-only">{{ isDark ? "Light mode" : "Dark mode" }}</span>
+					<span class="sr-only">{{ isDark ? "淺色模式" : "深色模式" }}</span>
 					<svg v-if="isDark" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
 						<circle cx="12" cy="12" r="4" />
 						<path d="M12 2v2" />
@@ -30,7 +30,7 @@
 			</div>
 
 			<label class="mb-4 grid gap-1.5">
-				<span class="text-[0.92rem]" :class="isDark ? 'text-[#c4cdd7]' : 'text-[#594f45]'">Photo</span>
+				<span class="text-[0.92rem]" :class="isDark ? 'text-[#c4cdd7]' : 'text-[#594f45]'">圖片</span>
 				<div class="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-2 overflow-hidden">
 					<input
 						class="w-full min-w-0 max-w-full rounded-[10px] border px-3 py-2"
@@ -44,8 +44,8 @@
 						class="inline-flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-[10px] border disabled:cursor-not-allowed disabled:opacity-50"
 						:class="isDark ? 'border-[#4f5967] bg-[#131820] text-[#e8edf2]' : 'border-[#cdbfae] bg-white text-[#2f2a25]'"
 						:disabled="busy"
-						aria-label="Import image from clipboard"
-						title="Import image from clipboard"
+						aria-label="從剪貼簿匯入圖片"
+						title="從剪貼簿匯入圖片"
 						@click="importImageFromClipboard"
 					>
 						<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -59,20 +59,20 @@
 			</label>
 
 			<label class="mb-4 grid gap-1.5">
-				<span class="text-[0.92rem]" :class="isDark ? 'text-[#c4cdd7]' : 'text-[#594f45]'">Text</span>
+				<span class="text-[0.92rem]" :class="isDark ? 'text-[#c4cdd7]' : 'text-[#594f45]'">文字</span>
 				<input
 					ref="textInputRef"
 					class="rounded-[10px] border px-3 py-2"
 					:class="isDark ? 'border-[#4f5967] bg-[#131820] text-[#e8edf2]' : 'border-[#cdbfae] bg-white text-[#2f2a25]'"
 					v-model="overlay.text"
 					type="text"
-					placeholder="Type text to place on image"
+					placeholder="輸入要加在圖片上的文字"
 					:disabled="!image"
 				/>
 			</label>
 
 			<label class="mb-4 grid gap-1.5">
-				<span class="text-[0.92rem]" :class="isDark ? 'text-[#c4cdd7]' : 'text-[#594f45]'">Text color</span>
+				<span class="text-[0.92rem]" :class="isDark ? 'text-[#c4cdd7]' : 'text-[#594f45]'">文字顏色</span>
 				<input class="h-9 w-full rounded-[10px] border p-1" :class="isDark ? 'border-[#4f5967] bg-[#131820]' : 'border-[#cdbfae] bg-white'" v-model="overlay.color" type="color" :disabled="!image" />
 			</label>
 
@@ -84,7 +84,7 @@
 					:disabled="!image || busy"
 					@click="downloadImage"
 				>
-					Download PNG
+					下載圖片(PNG)
 				</button>
 				<button
 					type="button"
@@ -93,7 +93,7 @@
 					:disabled="!image || busy"
 					@click="copyToClipboard"
 				>
-					Copy image
+					複製圖片
 				</button>
 			</div>
 
@@ -122,8 +122,8 @@
 				/>
 			</div>
 
-			<p class="mt-3 text-sm" :class="isDark ? 'text-[#a9b3bf]' : 'text-[#6c5f52]'" v-if="image">Drag inside text box to move, drag bottom-right diagonal button to resize.</p>
-			<p class="mt-3 text-sm" :class="isDark ? 'text-[#a9b3bf]' : 'text-[#6c5f52]'" v-else>Preview appears here after selecting an image.</p>
+			<p class="mt-3 text-sm" :class="isDark ? 'text-[#a9b3bf]' : 'text-[#6c5f52]'" v-if="image">拖曳文字框可移動位置，拖曳右下角斜線把手可調整大小。</p>
+			<p class="mt-3 text-sm" :class="isDark ? 'text-[#a9b3bf]' : 'text-[#6c5f52]'" v-else>請先載入圖片</p>
 		</section>
 	</main>
 </template>
@@ -327,13 +327,13 @@ async function onFileSelected(event: Event) {
 	}
 
 	if (!file.type.startsWith("image/")) {
-		setError("Please choose a valid image file.");
+		setError("請選擇有效的圖片檔案。");
 		target.value = "";
 		return;
 	}
 
 	if (file.size > 12 * 1024 * 1024) {
-		setError("Image must be smaller than 12MB.");
+		setError("圖片大小必須小於 12MB。");
 		target.value = "";
 		return;
 	}
@@ -346,9 +346,9 @@ async function onFileSelected(event: Event) {
 		redraw();
 		initializeOverlayPosition();
 		redraw();
-		setStatus("Image loaded. Drag text box to move, drag corner handle to resize.");
+		setStatus("圖片已載入");
 	} catch {
-		setError("Failed to load image. Please try another file.");
+		setError("載入圖片失敗，請再試一次。");
 	} finally {
 		busy.value = false;
 	}
@@ -358,7 +358,7 @@ async function importImageFromClipboard() {
 	clearMessages();
 
 	if (!navigator.clipboard || typeof navigator.clipboard.read !== "function") {
-		setError("Clipboard image import is not supported in this browser.");
+		setError("此瀏覽器不支援從剪貼簿匯入圖片。");
 		return;
 	}
 
@@ -380,12 +380,12 @@ async function importImageFromClipboard() {
 		}
 
 		if (!imageBlob) {
-			setError("Clipboard does not contain an image.");
+			setError("剪貼簿中沒有圖片內容。");
 			return;
 		}
 
 		if (imageBlob.size > 12 * 1024 * 1024) {
-			setError("Image must be smaller than 12MB.");
+			setError("圖片大小必須小於 12MB。");
 			return;
 		}
 
@@ -398,9 +398,9 @@ async function importImageFromClipboard() {
 		redraw();
 		initializeOverlayPosition();
 		redraw();
-		setStatus("Image imported from clipboard. Drag text box to move, drag corner handle to resize.");
+		setStatus("貼上完成");
 	} catch {
-		setError("Failed to read image from clipboard. Browser may require HTTPS or permission.");
+		setError("讀取剪貼簿圖片失敗，請檢查權限設定。");
 	} finally {
 		busy.value = false;
 	}
@@ -517,7 +517,7 @@ function formatDownloadName() {
 	const now = new Date();
 	const pad = (value: number) => value.toString().padStart(2, "0");
 	const stamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
-	return `composed-${stamp}.png`;
+	return `圖上字-${stamp}.png`;
 }
 
 async function downloadImage() {
@@ -542,9 +542,9 @@ async function downloadImage() {
 		a.download = formatDownloadName();
 		a.click();
 		URL.revokeObjectURL(url);
-		setStatus("Downloaded PNG successfully.");
+		setStatus("PNG 圖片下載完成。");
 	} catch {
-		setError("Failed to generate download image.");
+		setError("產生下載圖片失敗。");
 	} finally {
 		busy.value = false;
 	}
@@ -558,7 +558,7 @@ async function copyToClipboard() {
 	clearMessages();
 
 	if (!("clipboard" in navigator) || typeof ClipboardItem === "undefined") {
-		setError("Clipboard image copy is not supported in this browser.");
+		setError("此瀏覽器不支援複製圖片到剪貼簿。");
 		return;
 	}
 
@@ -578,9 +578,9 @@ async function copyToClipboard() {
 			}),
 		]);
 
-		setStatus("Image copied to clipboard.");
+		setStatus("圖片已複製到剪貼簿。");
 	} catch {
-		setError("Clipboard copy failed. Browser may require HTTPS or permission.");
+		setError("複製到剪貼簿失敗，瀏覽器可能需要 HTTPS 或權限設定。");
 	} finally {
 		busy.value = false;
 	}
