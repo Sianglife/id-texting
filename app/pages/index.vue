@@ -58,35 +58,65 @@
 				</div>
 			</label>
 
-			<label class="mb-4 grid gap-1.5">
-				<span class="text-[0.92rem]" :class="!image ? (isDark ? 'text-[#7c8794]' : 'text-[#a3988a]') : isDark ? 'text-[#c4cdd7]' : 'text-[#594f45]'">文字</span>
-				<input
-					ref="textInputRef"
-					class="rounded-[10px] border px-3 py-2"
-					:class="
-						!image
-							? isDark
-								? 'border-[#3f4752] bg-[#10151b] text-[#7c8794] placeholder:text-[#68727e]'
-								: 'border-[#ddd3c7] bg-[#f3eee7] text-[#a3988a] placeholder:text-[#b6ab9d]'
-							: isDark
-								? 'border-[#4f5967] bg-[#131820] text-[#e8edf2]'
-								: 'border-[#cdbfae] bg-white text-[#2f2a25]'
-					"
-					v-model="overlay.text"
-					type="text"
-					placeholder="輸入要加在圖片上的文字"
-					:disabled="!image"
-				/>
-			</label>
+			<div class="mb-4 grid gap-1.5">
+				<div class="flex items-center justify-between gap-2">
+					<span class="text-[0.92rem]" :class="!image ? (isDark ? 'text-[#7c8794]' : 'text-[#a3988a]') : isDark ? 'text-[#c4cdd7]' : 'text-[#594f45]'">文字</span>
+					<button
+						type="button"
+						class="inline-flex h-[34px] w-[34px] items-center justify-center rounded-[10px] border text-lg leading-none disabled:cursor-not-allowed disabled:opacity-50"
+						:class="isDark ? 'border-[#4f5967] bg-[#131820] text-[#e8edf2]' : 'border-[#cdbfae] bg-white text-[#2f2a25]'"
+						:disabled="busy"
+						aria-label="新增文字框"
+						title="新增文字框"
+						@click="addOverlayInput"
+					>
+						+
+					</button>
+				</div>
+
+				<div class="grid gap-2">
+					<div v-for="(item, index) in overlays" :key="`overlay-${index}`" class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
+						<input
+							:ref="el => setTextInputRef(el, index)"
+							class="rounded-[10px] border border-transparent px-3 py-2 focus:outline-none"
+							:class="
+								!image
+									? isDark
+										? 'bg-[#10151b] text-[#7c8794] placeholder:text-[#68727e] focus:border-[#586777]'
+										: 'bg-[#f3eee7] text-[#a3988a] placeholder:text-[#b6ab9d] focus:border-[#b7aa9b]'
+									: isDark
+										? 'bg-[#131820] text-[#e8edf2] focus:border-[#8ea0b6]'
+										: 'bg-white text-[#2f2a25] focus:border-[#8b7761]'
+							"
+							v-model="item.text"
+							type="text"
+							:placeholder="`輸入文字 ${index + 1}`"
+							:disabled="!image"
+							@focus="setActiveOverlay(index)"
+						/>
+						<button
+							type="button"
+							class="inline-flex h-[38px] w-[38px] items-center justify-center rounded-[10px] border text-base leading-none disabled:cursor-not-allowed disabled:opacity-50"
+							:class="isDark ? 'border-[#4f5967] bg-[#131820] text-[#e8edf2]' : 'border-[#cdbfae] bg-white text-[#2f2a25]'"
+							:disabled="busy || overlays.length <= 1"
+							aria-label="刪除此文字框"
+							title="刪除此文字框"
+							@click="removeOverlayInput(index)"
+						>
+							×
+						</button>
+					</div>
+				</div>
+			</div>
 
 			<label class="mb-4 grid gap-1.5">
-				<span class="text-[0.92rem]" :class="!image ? (isDark ? 'text-[#7c8794]' : 'text-[#a3988a]') : isDark ? 'text-[#c4cdd7]' : 'text-[#594f45]'">文字顏色</span>
+				<span class="text-[0.92rem]" :class="!image ? (isDark ? 'text-[#7c8794]' : 'text-[#a3988a]') : isDark ? 'text-[#c4cdd7]' : 'text-[#594f45]'">文字顏色（目前選取）</span>
 				<input
 					class="h-9 w-full rounded-[10px] border p-1"
 					:class="!image ? (isDark ? 'border-[#3f4752] bg-[#10151b]' : 'border-[#ddd3c7] bg-[#f3eee7]') : isDark ? 'border-[#4f5967] bg-[#131820]' : 'border-[#cdbfae] bg-white'"
-					v-model="overlay.color"
+					v-model="activeOverlayColor"
 					type="color"
-					:disabled="!image"
+					:disabled="!image || !activeOverlay"
 				/>
 			</label>
 
@@ -143,7 +173,7 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
 import {
 	clampOverlayPosition,
 	exportCompositionBlob,
@@ -159,22 +189,36 @@ import {
 } from "../utils/canvasComposer";
 
 const canvasRef = ref<HTMLCanvasElement | null>(null);
-const textInputRef = ref<HTMLInputElement | null>(null);
 const previewHostRef = ref<HTMLElement | null>(null);
+const textInputRefs = ref<Array<HTMLInputElement | null>>([]);
 
 const image = ref<HTMLImageElement | null>(null);
 const previewSize = reactive<Size>({ width: 0, height: 0 });
-const textRect = reactive<Rect>({ x: 0, y: 0, width: 0, height: 0 });
+const textRects = ref<Rect[]>([]);
 const resizeHandleRect = reactive<Rect>({ x: 0, y: 0, width: 16, height: 16 });
 
-const overlay = reactive<TextOverlay>({
-	text: "僅供 使用",
+const createDefaultOverlay = (text = ""): TextOverlay => ({
+	text,
 	x: 24,
 	y: 24,
 	fontSize: 40,
 	color: "#ff0000",
 	fontFamily: "system-ui, sans-serif",
 	fontWeight: "700",
+});
+
+const overlays = ref<TextOverlay[]>([createDefaultOverlay("僅供 使用")]);
+const activeOverlayIndex = ref(0);
+const activeOverlay = computed(() => overlays.value[activeOverlayIndex.value] ?? null);
+const activeOverlayColor = computed({
+	get: () => activeOverlay.value?.color ?? "#ff0000",
+	set: value => {
+		if (!activeOverlay.value) {
+			return;
+		}
+
+		activeOverlay.value.color = value;
+	},
 });
 
 const busy = ref(false);
@@ -185,6 +229,7 @@ const isDark = ref(false);
 const drag = reactive({
 	active: false,
 	mode: "move" as "move" | "resize",
+	overlayIndex: 0,
 	offsetX: 0,
 	offsetY: 0,
 	startX: 0,
@@ -193,6 +238,77 @@ const drag = reactive({
 });
 
 let resizeObserver: ResizeObserver | null = null;
+
+function setTextInputRef(element: Element | null, index: number) {
+	textInputRefs.value[index] = element as HTMLInputElement | null;
+}
+
+function setActiveOverlay(index: number) {
+	if (index < 0 || index >= overlays.value.length) {
+		return;
+	}
+
+	if (activeOverlayIndex.value === index) {
+		return;
+	}
+
+	activeOverlayIndex.value = index;
+
+	if (image.value) {
+		redraw();
+	}
+}
+
+function positionOverlay(index: number) {
+	const overlay = overlays.value[index];
+
+	if (!overlay) {
+		return;
+	}
+
+	overlay.x = 24;
+	overlay.y = Math.max(24, previewSize.height - overlay.fontSize - 40 - index * Math.round(overlay.fontSize * 1.35));
+}
+
+function initializeOverlayPositions() {
+	for (let index = 0; index < overlays.value.length; index += 1) {
+		positionOverlay(index);
+	}
+}
+
+function addOverlayInput() {
+	overlays.value.push(createDefaultOverlay(""));
+	const nextIndex = overlays.value.length - 1;
+	activeOverlayIndex.value = nextIndex;
+
+	if (image.value) {
+		positionOverlay(nextIndex);
+		redraw();
+	}
+
+	void nextTick(() => {
+		textInputRefs.value[nextIndex]?.focus();
+	});
+}
+
+function removeOverlayInput(index: number) {
+	if (index < 0 || index >= overlays.value.length || overlays.value.length <= 1) {
+		return;
+	}
+
+	overlays.value.splice(index, 1);
+	textInputRefs.value.splice(index, 1);
+
+	if (activeOverlayIndex.value > index) {
+		activeOverlayIndex.value -= 1;
+	} else if (activeOverlayIndex.value === index) {
+		activeOverlayIndex.value = Math.max(0, Math.min(index, overlays.value.length - 1));
+	}
+
+	if (image.value) {
+		redraw();
+	}
+}
 
 function setStatus(message: string) {
 	status.value = message;
@@ -230,68 +346,59 @@ function redraw() {
 	if (previewSize.width > 0 && previewSize.height > 0) {
 		const sx = nextSize.width / previewSize.width;
 		const sy = nextSize.height / previewSize.height;
-		overlay.x *= sx;
-		overlay.y *= sy;
+
+		for (const overlay of overlays.value) {
+			overlay.x *= sx;
+			overlay.y *= sy;
+		}
 	}
 
 	previewSize.width = nextSize.width;
 	previewSize.height = nextSize.height;
 
-	const clampedOverlay = clampOverlayPosition(overlay, previewSize, textRect);
-	overlay.x = clampedOverlay.x;
-	overlay.y = clampedOverlay.y;
-
-	const rect = renderPreview({
+	textRects.value = renderPreview({
 		canvas: canvasRef.value,
 		image: image.value,
-		overlay,
+		overlays: overlays.value,
 		size: previewSize,
+		activeOverlayIndex: activeOverlayIndex.value,
 	});
 
-	textRect.x = rect.x;
-	textRect.y = rect.y;
-	textRect.width = rect.width;
-	textRect.height = rect.height;
+	let changed = false;
 
-	const handleRect = getResizeHandleRect(textRect);
+	for (let index = 0; index < overlays.value.length; index += 1) {
+		const overlay = overlays.value[index];
+		const rect = textRects.value[index] ?? { x: overlay.x, y: overlay.y, width: 1, height: Math.max(1, overlay.fontSize * 1.25) };
+		const clamped = clampOverlayPosition(overlay, previewSize, rect);
+
+		if (clamped.x !== overlay.x || clamped.y !== overlay.y) {
+			overlay.x = clamped.x;
+			overlay.y = clamped.y;
+			changed = true;
+		}
+	}
+
+	if (changed) {
+		textRects.value = renderPreview({
+			canvas: canvasRef.value,
+			image: image.value,
+			overlays: overlays.value,
+			size: previewSize,
+			activeOverlayIndex: activeOverlayIndex.value,
+		});
+	}
+
+	const activeRect = textRects.value[activeOverlayIndex.value] ?? { x: 0, y: 0, width: 1, height: 1 };
+	const handleRect = getResizeHandleRect(activeRect);
 	resizeHandleRect.x = handleRect.x;
 	resizeHandleRect.y = handleRect.y;
 	resizeHandleRect.width = handleRect.width;
 	resizeHandleRect.height = handleRect.height;
-
-	const postClamp = clampOverlayPosition(overlay, previewSize, textRect);
-	const changed = postClamp.x !== overlay.x || postClamp.y !== overlay.y;
-
-	if (changed) {
-		overlay.x = postClamp.x;
-		overlay.y = postClamp.y;
-		const correctedRect = renderPreview({
-			canvas: canvasRef.value,
-			image: image.value,
-			overlay,
-			size: previewSize,
-		});
-
-		textRect.x = correctedRect.x;
-		textRect.y = correctedRect.y;
-		textRect.width = correctedRect.width;
-		textRect.height = correctedRect.height;
-
-		const correctedHandleRect = getResizeHandleRect(textRect);
-		resizeHandleRect.x = correctedHandleRect.x;
-		resizeHandleRect.y = correctedHandleRect.y;
-		resizeHandleRect.width = correctedHandleRect.width;
-		resizeHandleRect.height = correctedHandleRect.height;
-	}
-}
-
-function initializeOverlayPosition() {
-	overlay.x = 24;
-	overlay.y = Math.max(24, previewSize.height - overlay.fontSize - 40);
 }
 
 function getCanvasPoint(event: PointerEvent): { x: number; y: number } | null {
 	const canvas = canvasRef.value;
+
 	if (!canvas) {
 		return null;
 	}
@@ -310,21 +417,32 @@ function getCanvasPoint(event: PointerEvent): { x: number; y: number } | null {
 
 function updateCanvasCursor(point: { x: number; y: number } | null) {
 	const canvas = canvasRef.value;
-	if (!canvas || !point || !image.value) {
-		if (canvas) {
-			canvas.style.cursor = image.value ? "grab" : "default";
+
+	if (!canvas) {
+		return;
+	}
+
+	if (!point || !image.value) {
+		canvas.style.cursor = image.value ? "grab" : "default";
+		return;
+	}
+
+	for (let index = overlays.value.length - 1; index >= 0; index -= 1) {
+		const rect = textRects.value[index];
+
+		if (!rect) {
+			continue;
 		}
-		return;
-	}
 
-	if (pointHitsResizeHandle(point.x, point.y, resizeHandleRect)) {
-		canvas.style.cursor = "nwse-resize";
-		return;
-	}
+		if (pointHitsResizeHandle(point.x, point.y, getResizeHandleRect(rect))) {
+			canvas.style.cursor = "nwse-resize";
+			return;
+		}
 
-	if (pointHitsRect(point.x, point.y, textRect, 10)) {
-		canvas.style.cursor = "grab";
-		return;
+		if (pointHitsRect(point.x, point.y, rect, 10)) {
+			canvas.style.cursor = "grab";
+			return;
+		}
 	}
 
 	canvas.style.cursor = "default";
@@ -358,7 +476,7 @@ async function onFileSelected(event: Event) {
 		image.value = await loadImageFromFile(file);
 		await nextTick();
 		redraw();
-		initializeOverlayPosition();
+		initializeOverlayPositions();
 		redraw();
 		setStatus("圖片已載入");
 	} catch {
@@ -410,7 +528,7 @@ async function importImageFromClipboard() {
 		image.value = await loadImageFromFile(file);
 		await nextTick();
 		redraw();
-		initializeOverlayPosition();
+		initializeOverlayPositions();
 		redraw();
 		setStatus("貼上完成");
 	} catch {
@@ -431,15 +549,43 @@ function onPointerDown(event: PointerEvent) {
 		return;
 	}
 
-	const hitResizeHandle = pointHitsResizeHandle(point.x, point.y, resizeHandleRect);
-	const hitTextBox = pointHitsRect(point.x, point.y, textRect, 10);
+	let hitIndex = -1;
+	let hitMode: "move" | "resize" = "move";
 
-	if (!hitResizeHandle && !hitTextBox) {
+	for (let index = overlays.value.length - 1; index >= 0; index -= 1) {
+		const rect = textRects.value[index];
+
+		if (!rect) {
+			continue;
+		}
+
+		if (pointHitsResizeHandle(point.x, point.y, getResizeHandleRect(rect))) {
+			hitIndex = index;
+			hitMode = "resize";
+			break;
+		}
+
+		if (pointHitsRect(point.x, point.y, rect, 10)) {
+			hitIndex = index;
+			hitMode = "move";
+			break;
+		}
+	}
+
+	if (hitIndex < 0) {
+		return;
+	}
+
+	setActiveOverlay(hitIndex);
+	const overlay = overlays.value[hitIndex];
+
+	if (!overlay) {
 		return;
 	}
 
 	drag.active = true;
-	drag.mode = hitResizeHandle ? "resize" : "move";
+	drag.mode = hitMode;
+	drag.overlayIndex = hitIndex;
 	drag.offsetX = point.x - overlay.x;
 	drag.offsetY = point.y - overlay.y;
 	drag.startX = point.x;
@@ -466,6 +612,12 @@ function onPointerMove(event: PointerEvent) {
 		return;
 	}
 
+	const overlay = overlays.value[drag.overlayIndex];
+
+	if (!overlay) {
+		return;
+	}
+
 	if (drag.mode === "resize") {
 		const delta = Math.max(point.x - drag.startX, point.y - drag.startY);
 		overlay.fontSize = Math.max(14, Math.min(260, drag.startFontSize + delta));
@@ -473,7 +625,13 @@ function onPointerMove(event: PointerEvent) {
 		overlay.x = point.x - drag.offsetX;
 		overlay.y = point.y - drag.offsetY;
 
-		const clamped = clampOverlayPosition(overlay, previewSize, textRect);
+		const rect = textRects.value[drag.overlayIndex] ?? {
+			x: overlay.x,
+			y: overlay.y,
+			width: 1,
+			height: Math.max(1, overlay.fontSize * 1.25),
+		};
+		const clamped = clampOverlayPosition(overlay, previewSize, rect);
 		overlay.x = clamped.x;
 		overlay.y = clamped.y;
 	}
@@ -512,19 +670,25 @@ function onCanvasDoubleClick(event: MouseEvent) {
 	const pointX = event.clientX - rect.left;
 	const pointY = event.clientY - rect.top;
 
-	if (!pointHitsRect(pointX, pointY, textRect, 10)) {
+	for (let index = overlays.value.length - 1; index >= 0; index -= 1) {
+		const hitRect = textRects.value[index];
+
+		if (!hitRect || !pointHitsRect(pointX, pointY, hitRect, 10)) {
+			continue;
+		}
+
+		setActiveOverlay(index);
+		const input = textInputRefs.value[index];
+
+		if (!input) {
+			return;
+		}
+
+		input.focus();
+		const textLength = input.value.length;
+		input.setSelectionRange(textLength, textLength);
 		return;
 	}
-
-	const input = textInputRef.value;
-
-	if (!input) {
-		return;
-	}
-
-	input.focus();
-	const textLength = input.value.length;
-	input.setSelectionRange(textLength, textLength);
 }
 
 function formatDownloadName() {
@@ -545,7 +709,7 @@ async function downloadImage() {
 	try {
 		const blob = await exportCompositionBlob({
 			image: image.value,
-			overlay,
+			overlays: overlays.value,
 			previewSize,
 			mimeType: "image/png",
 		});
@@ -581,7 +745,7 @@ async function copyToClipboard() {
 	try {
 		const blob = await exportCompositionBlob({
 			image: image.value,
-			overlay,
+			overlays: overlays.value,
 			previewSize,
 			mimeType: "image/png",
 		});
@@ -601,7 +765,7 @@ async function copyToClipboard() {
 }
 
 watch(
-	() => [overlay.text, overlay.fontSize, overlay.color],
+	overlays,
 	() => {
 		if (!image.value) {
 			return;
@@ -609,7 +773,16 @@ watch(
 
 		redraw();
 	},
+	{ deep: true },
 );
+
+watch(activeOverlayIndex, () => {
+	if (!image.value) {
+		return;
+	}
+
+	redraw();
+});
 
 onMounted(() => {
 	if (typeof window !== "undefined") {

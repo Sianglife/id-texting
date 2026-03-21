@@ -23,15 +23,16 @@ export interface Size {
 interface RenderPreviewOptions {
 	canvas: HTMLCanvasElement;
 	image: HTMLImageElement;
-	overlay: TextOverlay;
+	overlays: TextOverlay[];
 	size: Size;
 	dpr?: number;
 	showOverlayGuides?: boolean;
+	activeOverlayIndex?: number;
 }
 
 interface ExportOptions {
 	image: HTMLImageElement;
-	overlay: TextOverlay;
+	overlays: TextOverlay[];
 	previewSize: Size;
 	mimeType?: string;
 	quality?: number;
@@ -69,10 +70,11 @@ export async function loadImageFromFile(file: File): Promise<HTMLImageElement> {
 	});
 }
 
-export function renderPreview(options: RenderPreviewOptions): Rect {
-	const { canvas, image, overlay, size } = options;
+export function renderPreview(options: RenderPreviewOptions): Rect[] {
+	const { canvas, image, overlays, size } = options;
 	const dpr = Math.max(1, options.dpr ?? (typeof window !== "undefined" ? window.devicePixelRatio : 1));
 	const showOverlayGuides = options.showOverlayGuides ?? true;
+	const activeOverlayIndex = options.activeOverlayIndex ?? 0;
 	const ctx = canvas.getContext("2d");
 
 	if (!ctx) {
@@ -89,34 +91,43 @@ export function renderPreview(options: RenderPreviewOptions): Rect {
 
 	ctx.drawImage(image, 0, 0, size.width, size.height);
 
-	const text = overlay.text || "";
-	ctx.font = `${overlay.fontWeight} ${overlay.fontSize}px ${overlay.fontFamily}`;
-	ctx.textBaseline = "top";
-	ctx.fillStyle = overlay.color;
-	ctx.fillText(text, overlay.x, overlay.y);
+	const textRects: Rect[] = [];
 
-	const metrics = ctx.measureText(text);
-	const textWidth = Math.max(0, metrics.width);
-	const textHeight = Math.max(1, overlay.fontSize * 1.25);
-	const textRect = {
-		x: overlay.x,
-		y: overlay.y,
-		width: textWidth,
-		height: textHeight,
-	};
+	for (const overlay of overlays) {
+		const text = overlay.text || "";
+		ctx.font = `${overlay.fontWeight} ${overlay.fontSize}px ${overlay.fontFamily}`;
+		ctx.textBaseline = "top";
+		ctx.fillStyle = overlay.color;
+		ctx.fillText(text, overlay.x, overlay.y);
 
-	if (showOverlayGuides && text.length > 0) {
-		ctx.save();
-		ctx.strokeStyle = "#fffdf8";
-		ctx.lineWidth = 1;
-		ctx.strokeRect(textRect.x - 2, textRect.y - 2, textRect.width + 4, textRect.height + 4);
-		ctx.restore();
-
-		const handleRect = getResizeHandleRect(textRect);
-		drawResizeHandle(ctx, handleRect);
+		const metrics = ctx.measureText(text);
+		const textWidth = Math.max(0, metrics.width);
+		const textHeight = Math.max(1, overlay.fontSize * 1.25);
+		textRects.push({
+			x: overlay.x,
+			y: overlay.y,
+			width: textWidth,
+			height: textHeight,
+		});
 	}
 
-	return textRect;
+	if (showOverlayGuides && activeOverlayIndex >= 0 && activeOverlayIndex < textRects.length) {
+		const activeOverlay = overlays[activeOverlayIndex];
+		const activeRect = textRects[activeOverlayIndex];
+
+		if (activeOverlay?.text?.length > 0 && activeRect) {
+			ctx.save();
+			ctx.strokeStyle = "#fffdf8";
+			ctx.lineWidth = 1;
+			ctx.strokeRect(activeRect.x - 2, activeRect.y - 2, activeRect.width + 4, activeRect.height + 4);
+			ctx.restore();
+
+			const handleRect = getResizeHandleRect(activeRect);
+			drawResizeHandle(ctx, handleRect);
+		}
+	}
+
+	return textRects;
 }
 
 function drawResizeHandle(ctx: CanvasRenderingContext2D, handleRect: Rect) {
@@ -164,7 +175,7 @@ export function clampOverlayPosition(overlay: TextOverlay, bounds: Size, textRec
 }
 
 export async function exportCompositionBlob(options: ExportOptions): Promise<Blob> {
-	const { image, overlay, previewSize } = options;
+	const { image, overlays, previewSize } = options;
 	const mimeType = options.mimeType ?? "image/png";
 	const quality = options.quality ?? 0.92;
 
@@ -185,17 +196,20 @@ export async function exportCompositionBlob(options: ExportOptions): Promise<Blo
 	ctx.drawImage(image, 0, 0, exportCanvas.width, exportCanvas.height);
 
 	const scale = exportCanvas.width / previewSize.width;
-	const exportOverlay = {
-		...overlay,
-		x: overlay.x * scale,
-		y: overlay.y * scale,
-		fontSize: overlay.fontSize * scale,
-	};
 
-	ctx.font = `${exportOverlay.fontWeight} ${exportOverlay.fontSize}px ${exportOverlay.fontFamily}`;
-	ctx.textBaseline = "top";
-	ctx.fillStyle = exportOverlay.color;
-	ctx.fillText(exportOverlay.text, exportOverlay.x, exportOverlay.y);
+	for (const overlay of overlays) {
+		const exportOverlay = {
+			...overlay,
+			x: overlay.x * scale,
+			y: overlay.y * scale,
+			fontSize: overlay.fontSize * scale,
+		};
+
+		ctx.font = `${exportOverlay.fontWeight} ${exportOverlay.fontSize}px ${exportOverlay.fontFamily}`;
+		ctx.textBaseline = "top";
+		ctx.fillStyle = exportOverlay.color;
+		ctx.fillText(exportOverlay.text, exportOverlay.x, exportOverlay.y);
+	}
 
 	const blob = await new Promise<Blob | null>(resolve => {
 		exportCanvas.toBlob(resolve, mimeType, quality);
