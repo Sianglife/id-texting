@@ -2,14 +2,15 @@
 export default defineNuxtConfig({
 	compatibilityDate: "2025-07-15",
 	devtools: { enabled: true },
-	modules: [
-		"@nuxtjs/tailwindcss",
-		[
-			"@nuxtjs/google-analytics",
-			{
-				id: "G-WSWKZM1V4W",
-			},
-		],
-	],
+	modules: ["@nuxtjs/tailwindcss"],
 	css: ["~/assets/css/main.css"],
+	$production: {
+		scripts: {
+			registry: {
+				googleAnalytics: {
+					id: "G-WSWKZM1V4W",
+				},
+			},
+		},
+	},
 });
