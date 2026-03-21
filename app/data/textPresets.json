@@ -1,0 +1,42 @@
+[
+	{
+		"id": "blank",
+		"label": "空白文字",
+		"text": "",
+		"fontSize": 40,
+		"position": {
+			"x": 24,
+			"y": 24
+		}
+	},
+	{
+		"id": "tw-id-front",
+		"label": "用途標註",
+		"text": "---僅供 使用---",
+		"fontSize": 16,
+		"position": {
+			"x": 23,
+			"y": 153
+		}
+	},
+	{
+		"id": "do-not-change",
+		"label": "塗改他用無效",
+		"text": "---塗改他用無效---",
+		"fontSize": 16,
+		"position": {
+			"x": 22,
+			"y": 175
+		}
+	},
+	{
+		"id": "date-roc-number",
+		"label": "日期標記(民國年)",
+		"text": "113/03/21",
+		"fontSize": 16,
+		"position": {
+			"x": 22,
+			"y": 175
+		}
+	}
+]

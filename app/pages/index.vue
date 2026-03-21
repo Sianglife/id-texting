@@ -61,21 +61,47 @@
 			<div class="mb-4 grid gap-1.5">
 				<div class="flex items-center justify-between gap-2">
 					<span class="text-[0.92rem]" :class="!image ? (isDark ? 'text-[#7c8794]' : 'text-[#a3988a]') : isDark ? 'text-[#c4cdd7]' : 'text-[#594f45]'">文字</span>
-					<button
-						type="button"
-						class="inline-flex h-[34px] w-[34px] items-center justify-center rounded-[10px] border text-lg leading-none disabled:cursor-not-allowed disabled:opacity-50"
-						:class="isDark ? 'border-[#4f5967] bg-[#131820] text-[#e8edf2]' : 'border-[#cdbfae] bg-white text-[#2f2a25]'"
-						:disabled="busy"
-						aria-label="新增文字框"
-						title="新增文字框"
-						@click="addOverlayInput"
-					>
-						+
-					</button>
+					<div class="relative" ref="presetPickerRef">
+						<button
+							type="button"
+							class="inline-flex h-[34px] w-[34px] items-center justify-center rounded-[10px] border text-lg leading-none disabled:cursor-not-allowed disabled:opacity-50"
+							:class="isDark ? 'border-[#4f5967] bg-[#131820] text-[#e8edf2]' : 'border-[#cdbfae] bg-white text-[#2f2a25]'"
+							:disabled="busy"
+							aria-label="新增文字框"
+							title="新增文字框"
+							@click="openPresetPicker"
+						>
+							+
+						</button>
+
+						<div
+							v-if="isPresetPickerOpen"
+							class="absolute right-0 top-[44px] z-30 w-[280px] rounded-[14px] border p-2.5 shadow-[0_10px_30px_rgba(0,0,0,0.22)]"
+							:class="isDark ? 'border-[#4f5967] bg-[#1a2027] text-[#e8edf2]' : 'border-[#cdbfae] bg-[#fffdf8] text-[#2f2a25]'"
+						>
+							<div class="absolute right-3 top-[-6px] h-3 w-3 rotate-45 border-l border-t" :class="isDark ? 'border-[#4f5967] bg-[#1a2027]' : 'border-[#cdbfae] bg-[#fffdf8]'" />
+							<p class="mb-2 text-xs" :class="isDark ? 'text-[#aab6c4]' : 'text-[#6f6255]'">選一個文字來新增</p>
+							<div class="grid max-h-[220px] gap-1.5 overflow-auto">
+								<button
+									v-for="item in presetTextOptionsList"
+									:key="item.id"
+									type="button"
+									class="rounded-[10px] border px-2.5 py-2 text-left"
+									:class="
+										selectedPresetId === item.id ? (isDark ? 'border-[#8ea0b6] bg-[#222b35]' : 'border-[#8b7761] bg-[#f3ede4]') : isDark ? 'border-[#4f5967] bg-[#131820]' : 'border-[#d8cdbf] bg-white'
+									"
+									@click="selectPresetAndAdd(item.id)"
+								>
+									<div class="text-sm font-semibold">{{ item.label }}</div>
+									<div class="mt-0.5 text-xs" :class="isDark ? 'text-[#aab6c4]' : 'text-[#6f6255]'">{{ item.text || "(空白)" }}</div>
+								</button>
+							</div>
+						</div>
+					</div>
 				</div>
 
 				<div class="grid gap-2">
-					<div v-for="(item, index) in overlays" :key="`overlay-${index}`" class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
+					<div v-for="(item, index) in overlays" :key="`overlay-${index}`" class="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2">
 						<input
 							:ref="el => setTextInputRef(el, index)"
 							class="rounded-[10px] border border-transparent px-3 py-2 focus:outline-none"
@@ -94,6 +120,15 @@
 							:disabled="!image"
 							@focus="setActiveOverlay(index)"
 						/>
+						<input
+							class="h-[38px] w-[38px] rounded-[10px] border p-1"
+							:class="!image ? (isDark ? 'border-[#3f4752] bg-[#10151b]' : 'border-[#ddd3c7] bg-[#f3eee7]') : isDark ? 'border-[#4f5967] bg-[#131820]' : 'border-[#cdbfae] bg-white'"
+							v-model="item.color"
+							type="color"
+							:disabled="!image"
+							:title="`設定文字 ${index + 1} 顏色`"
+							@focus="setActiveOverlay(index)"
+						/>
 						<button
 							type="button"
 							class="inline-flex h-[38px] w-[38px] items-center justify-center rounded-[10px] border text-base leading-none disabled:cursor-not-allowed disabled:opacity-50"
@@ -107,18 +142,11 @@
 						</button>
 					</div>
 				</div>
-			</div>
 
-			<label class="mb-4 grid gap-1.5">
-				<span class="text-[0.92rem]" :class="!image ? (isDark ? 'text-[#7c8794]' : 'text-[#a3988a]') : isDark ? 'text-[#c4cdd7]' : 'text-[#594f45]'">文字顏色（目前選取）</span>
-				<input
-					class="h-9 w-full rounded-[10px] border p-1"
-					:class="!image ? (isDark ? 'border-[#3f4752] bg-[#10151b]' : 'border-[#ddd3c7] bg-[#f3eee7]') : isDark ? 'border-[#4f5967] bg-[#131820]' : 'border-[#cdbfae] bg-white'"
-					v-model="activeOverlayColor"
-					type="color"
-					:disabled="!image || !activeOverlay"
-				/>
-			</label>
+				<p v-if="isDev && selectedOverlay" class="mt-1 text-xs" :class="isDark ? 'text-[#8fa2b7]' : 'text-[#6f6255]'">
+					選取資訊 x: {{ Math.round(selectedOverlay.x) }}, y: {{ Math.round(selectedOverlay.y) }}, font-size: {{ Math.round(selectedOverlay.fontSize) }}
+				</p>
+			</div>
 
 			<div class="mt-2 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
 				<button
@@ -174,6 +202,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
+import presetTextOptions from "../data/textPresets.json";
 import {
 	clampOverlayPosition,
 	exportCompositionBlob,
@@ -188,9 +217,21 @@ import {
 	type TextOverlay,
 } from "../utils/canvasComposer";
 
+type PresetTextOption = {
+	id: string;
+	label: string;
+	text: string;
+	fontSize?: number;
+	position?: {
+		x: number;
+		y: number;
+	};
+};
+
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 const previewHostRef = ref<HTMLElement | null>(null);
 const textInputRefs = ref<Array<HTMLInputElement | null>>([]);
+const presetPickerRef = ref<HTMLElement | null>(null);
 
 const image = ref<HTMLImageElement | null>(null);
 const previewSize = reactive<Size>({ width: 0, height: 0 });
@@ -207,19 +248,14 @@ const createDefaultOverlay = (text = ""): TextOverlay => ({
 	fontWeight: "700",
 });
 
-const overlays = ref<TextOverlay[]>([createDefaultOverlay("僅供 使用")]);
+const overlays = ref<TextOverlay[]>([]);
 const activeOverlayIndex = ref(0);
-const activeOverlay = computed(() => overlays.value[activeOverlayIndex.value] ?? null);
-const activeOverlayColor = computed({
-	get: () => activeOverlay.value?.color ?? "#ff0000",
-	set: value => {
-		if (!activeOverlay.value) {
-			return;
-		}
-
-		activeOverlay.value.color = value;
-	},
-});
+const isPresetPickerOpen = ref(false);
+const selectedPresetId = ref<string>("");
+const pendingPresetOverlayIndex = ref<number | null>(null);
+const presetTextOptionsList = presetTextOptions as PresetTextOption[];
+const isDev = import.meta.dev;
+const selectedOverlay = computed(() => overlays.value[activeOverlayIndex.value] ?? null);
 
 const busy = ref(false);
 const status = ref("");
@@ -276,8 +312,25 @@ function initializeOverlayPositions() {
 	}
 }
 
-function addOverlayInput() {
-	overlays.value.push(createDefaultOverlay(""));
+function openPresetPicker() {
+	if (isPresetPickerOpen.value) {
+		closePresetPicker();
+		return;
+	}
+
+	addOverlayInput("");
+	pendingPresetOverlayIndex.value = activeOverlayIndex.value;
+	selectedPresetId.value = presetTextOptionsList[0]?.id ?? "";
+	isPresetPickerOpen.value = true;
+}
+
+function closePresetPicker() {
+	isPresetPickerOpen.value = false;
+	pendingPresetOverlayIndex.value = null;
+}
+
+function addOverlayInput(text = "") {
+	overlays.value.push(createDefaultOverlay(text));
 	const nextIndex = overlays.value.length - 1;
 	activeOverlayIndex.value = nextIndex;
 
@@ -289,6 +342,56 @@ function addOverlayInput() {
 	void nextTick(() => {
 		textInputRefs.value[nextIndex]?.focus();
 	});
+}
+
+function selectPresetAndAdd(presetId: string) {
+	selectedPresetId.value = presetId;
+
+	const targetIndex = pendingPresetOverlayIndex.value;
+
+	if (targetIndex === null) {
+		closePresetPicker();
+		return;
+	}
+
+	const selected = presetTextOptionsList.find(item => item.id === presetId);
+	const targetOverlay = overlays.value[targetIndex];
+
+	if (targetOverlay) {
+		targetOverlay.text = selected?.text ?? "";
+
+		if (typeof selected?.fontSize === "number") {
+			targetOverlay.fontSize = selected.fontSize;
+		}
+
+		if (selected?.position) {
+			targetOverlay.x = selected.position.x;
+			targetOverlay.y = selected.position.y;
+		}
+
+		setActiveOverlay(targetIndex);
+	}
+
+	closePresetPicker();
+}
+
+function onGlobalPointerDown(event: PointerEvent) {
+	if (!isPresetPickerOpen.value) {
+		return;
+	}
+
+	const target = event.target as Node | null;
+
+	if (!target) {
+		closePresetPicker();
+		return;
+	}
+
+	if (presetPickerRef.value?.contains(target)) {
+		return;
+	}
+
+	closePresetPicker();
 }
 
 function removeOverlayInput(index: number) {
@@ -786,6 +889,10 @@ watch(activeOverlayIndex, () => {
 
 onMounted(() => {
 	if (typeof window !== "undefined") {
+		window.addEventListener("pointerdown", onGlobalPointerDown);
+	}
+
+	if (typeof window !== "undefined") {
 		isDark.value = window.matchMedia("(prefers-color-scheme: dark)").matches;
 	}
 
@@ -805,6 +912,10 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+	if (typeof window !== "undefined") {
+		window.removeEventListener("pointerdown", onGlobalPointerDown);
+	}
+
 	resizeObserver?.disconnect();
 	resizeObserver = null;
 });
