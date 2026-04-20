@@ -498,7 +498,6 @@ async function restoreCachedImage() {
 		image.value = await loadImageFromDataUrl(cachedDataUrl);
 		imageSourceDataUrl.value = cachedDataUrl;
 		await nextTick();
-		redraw();
 
 		if (!hasRestoredOverlayState.value) {
 			initializeOverlayPositions();
@@ -879,7 +878,6 @@ async function onFileSelected(event: Event) {
 		image.value = await loadImageFromFile(file);
 		await cacheSourceImageFromBlob(file);
 		await nextTick();
-		redraw();
 
 		if (!hasRestoredOverlayState.value) {
 			initializeOverlayPositions();
@@ -936,7 +934,6 @@ async function importImageFromClipboard() {
 		image.value = await loadImageFromFile(file);
 		await cacheSourceImageFromBlob(imageBlob);
 		await nextTick();
-		redraw();
 
 		if (!hasRestoredOverlayState.value) {
 			initializeOverlayPositions();
