@@ -56,6 +56,10 @@
 						</svg>
 					</button>
 				</div>
+				<label class="mt-2 inline-flex items-center gap-2 text-sm" :class="isDark ? 'text-[#c4cdd7]' : 'text-[#594f45]'">
+					<input type="checkbox" class="h-4 w-4 rounded border" :class="isDark ? 'border-[#4f5967] bg-[#131820]' : 'border-[#cdbfae] bg-white'" v-model="cacheImageInBrowser" />
+					<span>在瀏覽器中儲存圖片與編輯狀態</span>
+				</label>
 			</label>
 
 			<div class="mb-4 grid gap-1.5">
@@ -215,7 +219,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch, type ComponentPublicInstance } from "vue";
 import textTemplates from "../data/textTemplates.json";
 import {
 	clampOverlayPosition,
@@ -248,6 +252,8 @@ type PersistedOverlayState = {
 };
 
 const OVERLAY_STATE_STORAGE_KEY = "id-texting-overlay-state-v1";
+const CACHE_IMAGE_OPTION_STORAGE_KEY = "id-texting-cache-image-option-v1";
+const CACHED_IMAGE_STORAGE_KEY = "id-texting-cached-image-base64-v1";
 
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 const previewHostRef = ref<HTMLElement | null>(null);
@@ -304,6 +310,8 @@ const busy = ref(false);
 const status = ref("");
 const errorMessage = ref("");
 const isDark = ref(false);
+const cacheImageInBrowser = ref(false);
+const imageSourceDataUrl = ref("");
 
 const drag = reactive({
 	active: false,
@@ -335,7 +343,12 @@ function getCurrentGregorianDateText() {
 	return `${year}/${month}/${day}`;
 }
 
-function setTextInputRef(element: Element | null, index: number) {
+function setTextInputRef(element: Element | ComponentPublicInstance | null, index: number) {
+	if (element && "$el" in element) {
+		textInputRefs.value[index] = element.$el as HTMLInputElement | null;
+		return;
+	}
+
 	textInputRefs.value[index] = element as HTMLInputElement | null;
 }
 
@@ -383,6 +396,119 @@ function persistOverlayState() {
 	};
 
 	window.localStorage.setItem(OVERLAY_STATE_STORAGE_KEY, JSON.stringify(payload));
+}
+
+function persistCacheImageOptionState() {
+	if (typeof window === "undefined") {
+		return;
+	}
+
+	window.localStorage.setItem(CACHE_IMAGE_OPTION_STORAGE_KEY, cacheImageInBrowser.value ? "1" : "0");
+}
+
+function restoreCacheImageOptionState() {
+	if (typeof window === "undefined") {
+		return;
+	}
+
+	const saved = window.localStorage.getItem(CACHE_IMAGE_OPTION_STORAGE_KEY);
+	cacheImageInBrowser.value = saved === "1";
+}
+
+function clearCachedImage() {
+	if (typeof window === "undefined") {
+		return;
+	}
+
+	window.localStorage.removeItem(CACHED_IMAGE_STORAGE_KEY);
+}
+
+function isStorageQuotaExceeded(error: unknown) {
+	return error instanceof DOMException && (error.name === "QuotaExceededError" || error.name === "NS_ERROR_DOM_QUOTA_REACHED");
+}
+
+function blobToDataURL(blob: Blob): Promise<string> {
+	return new Promise((resolve, reject) => {
+		const reader = new FileReader();
+
+		reader.onload = () => {
+			if (typeof reader.result === "string") {
+				resolve(reader.result);
+				return;
+			}
+
+			reject(new Error("Failed to convert blob to base64"));
+		};
+
+		reader.onerror = () => reject(reader.error ?? new Error("Failed to read blob"));
+		reader.readAsDataURL(blob);
+	});
+}
+
+function cacheSourceImageToLocalStorage(sourceDataUrl: string) {
+	if (typeof window === "undefined" || !cacheImageInBrowser.value || !sourceDataUrl.startsWith("data:image/")) {
+		return;
+	}
+
+	try {
+		window.localStorage.setItem(CACHED_IMAGE_STORAGE_KEY, sourceDataUrl);
+	} catch (error) {
+		if (isStorageQuotaExceeded(error)) {
+			clearCachedImage();
+			setError("圖片過大，瀏覽器儲存空間不足，無法暫存原圖。");
+			return;
+		}
+
+		console.warn("Unable to cache source image in localStorage", error);
+	}
+}
+
+async function cacheSourceImageFromBlob(blob: Blob) {
+	if (!cacheImageInBrowser.value) {
+		return;
+	}
+
+	const dataUrl = await blobToDataURL(blob);
+	imageSourceDataUrl.value = dataUrl;
+	cacheSourceImageToLocalStorage(dataUrl);
+}
+
+function loadImageFromDataUrl(dataUrl: string): Promise<HTMLImageElement> {
+	return new Promise((resolve, reject) => {
+		const img = new Image();
+
+		img.onload = () => resolve(img);
+		img.onerror = () => reject(new Error("Unable to load cached image"));
+		img.src = dataUrl;
+	});
+}
+
+async function restoreCachedImage() {
+	if (typeof window === "undefined") {
+		return;
+	}
+
+	const cachedDataUrl = window.localStorage.getItem(CACHED_IMAGE_STORAGE_KEY);
+
+	if (!cachedDataUrl || !cachedDataUrl.startsWith("data:image/")) {
+		return;
+	}
+
+	try {
+		image.value = await loadImageFromDataUrl(cachedDataUrl);
+		imageSourceDataUrl.value = cachedDataUrl;
+		await nextTick();
+		redraw();
+
+		if (!hasRestoredOverlayState.value) {
+			initializeOverlayPositions();
+		}
+
+		redraw();
+		setStatus("已載入暫存圖片");
+	} catch {
+		clearCachedImage();
+	}
 }
 
 function restoreOverlayState() {
@@ -447,6 +573,7 @@ function restoreOverlayState() {
 function resetWorkspace() {
 	closeTemplatePicker();
 	image.value = null;
+	imageSourceDataUrl.value = "";
 	overlays.value = [];
 	textInputRefs.value = [];
 	activeOverlayIndex.value = 0;
@@ -463,6 +590,7 @@ function resetWorkspace() {
 
 	if (typeof window !== "undefined") {
 		window.localStorage.removeItem(OVERLAY_STATE_STORAGE_KEY);
+		clearCachedImage();
 	}
 
 	hasRestoredOverlayState.value = false;
@@ -638,6 +766,11 @@ function redraw() {
 
 	for (let index = 0; index < overlays.value.length; index += 1) {
 		const overlay = overlays.value[index];
+
+		if (!overlay) {
+			continue;
+		}
+
 		const rect = textRects.value[index] ?? { x: overlay.x, y: overlay.y, width: 1, height: Math.max(1, overlay.fontSize * 1.25) };
 		const clamped = clampOverlayPosition(overlay, previewSize, rect);
 
@@ -744,6 +877,7 @@ async function onFileSelected(event: Event) {
 
 	try {
 		image.value = await loadImageFromFile(file);
+		await cacheSourceImageFromBlob(file);
 		await nextTick();
 		redraw();
 
@@ -800,6 +934,7 @@ async function importImageFromClipboard() {
 		const file = new File([imageBlob], `clipboard-image.${extension}`, { type });
 
 		image.value = await loadImageFromFile(file);
+		await cacheSourceImageFromBlob(imageBlob);
 		await nextTick();
 		redraw();
 
@@ -1057,6 +1192,19 @@ watch(
 	{ deep: true },
 );
 
+watch(cacheImageInBrowser, enabled => {
+	persistCacheImageOptionState();
+
+	if (!enabled) {
+		clearCachedImage();
+		return;
+	}
+
+	if (imageSourceDataUrl.value) {
+		cacheSourceImageToLocalStorage(imageSourceDataUrl.value);
+	}
+});
+
 watch(activeOverlayIndex, () => {
 	if (image.value) {
 		redraw();
@@ -1067,6 +1215,8 @@ watch(activeOverlayIndex, () => {
 
 onMounted(() => {
 	restoreOverlayState();
+	restoreCacheImageOptionState();
+	void restoreCachedImage();
 	templateClockTimer = setInterval(() => {
 		templateTick.value = Date.now();
 	}, 30 * 1000);
