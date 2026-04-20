@@ -243,6 +243,46 @@ import {
 	type TextOverlay,
 } from "../utils/canvasComposer";
 
+useHead({
+	script: [
+		{
+			type: "application/ld+json",
+			innerHTML: JSON.stringify({
+				"@context": "https://schema.org",
+				"@type": "WebApplication",
+				name: "圖上字",
+				description: "免費的線上圖片加字工具，輕鬆在圖片、證件或海報上新增文字標註。支援拖曳調整位置、自訂字型大小，在瀏覽器本地處理，無需上傳至伺服器。",
+				url: "https://sianglife.github.io/id-texting/",
+				applicationCategory: "DesignApplication",
+				operatingSystem: "Any",
+				browserRequirements: "Requires a modern web browser with HTML5 Canvas support",
+				inLanguage: "zh-TW",
+				isAccessibleForFree: true,
+				offers: {
+					"@type": "Offer",
+					price: "0",
+					priceCurrency: "TWD",
+				},
+				featureList: [
+					"在圖片上新增文字",
+					"拖曳調整文字位置",
+					"自訂字型大小與顏色",
+					"預設文字模板",
+					"本地處理，保護隱私",
+					"支援 PNG、JPEG、WebP",
+					"匯出為 PNG",
+				],
+				screenshot: "https://sianglife.github.io/id-texting/og-image.png",
+				creator: {
+					"@type": "Person",
+					name: "Sianglife",
+					url: "https://github.com/Sianglife",
+				},
+			}),
+		},
+	],
+});
+
 type TemplateTextOption = {
 	id: string;
 	label: string;

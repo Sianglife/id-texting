@@ -1,2 +1,3 @@
 User-Agent: *
-Disallow:
+Allow: /
+Sitemap: https://sianglife.github.io/id-texting/sitemap.xml
