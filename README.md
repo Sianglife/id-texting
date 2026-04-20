@@ -3,6 +3,8 @@
 ID Texting is a Nuxt-based image text editor for adding text on photos, cards, and ID-style layouts. 
 It is designed for quick text placement, drag-and-resize editing, and export-friendly composition on top of uploaded images.
 
+<img width="600" alt="snapshot" src="https://github.com/user-attachments/assets/b7ba5bcb-7788-4433-b0cf-f84e78aa349c" />
+
 ## Intro
 
 The app focuses on two common use cases:
@@ -16,7 +18,7 @@ The editor runs fully in the browser. Images are processed locally, so nothing n
 
 You can use the app immediately here:
 
-- [sianglife.github.io/id-texting/](https://sianglife.github.io/id-texting/)
+[sianglife.github.io/id-texting/](https://sianglife.github.io/id-texting/)
 
 ## Get Started
 
