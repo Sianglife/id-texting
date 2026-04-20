@@ -169,7 +169,6 @@
 					class="cursor-pointer rounded-[10px] border px-3 py-2 disabled:cursor-not-allowed disabled:opacity-50"
 					:class="isDark ? 'border-[#708094] bg-[#364050] text-[#f0f4f8]' : 'border-[#2f2a25] bg-[#2f2a25] text-[#fffdf8]'"
 					type="button"
-					aria-label="下載圖片（PNG）"
 					:disabled="!image || busy"
 					@click="downloadImage"
 				>
@@ -179,7 +178,6 @@
 					type="button"
 					class="cursor-pointer rounded-[10px] border px-3 py-2 disabled:cursor-not-allowed disabled:opacity-50"
 					:class="isDark ? 'border-[#708094] bg-[#12171d] text-[#dce4ed]' : 'border-[#2f2a25] bg-[#fffdf8] text-[#2f2a25]'"
-					aria-label="複製圖片到剪貼簿"
 					:disabled="!image || busy"
 					@click="copyToClipboard"
 				>
@@ -196,7 +194,6 @@
 				type="button"
 				class="mt-2 cursor-pointer rounded-[10px] border px-3 py-2 text-sm"
 				:class="isDark ? 'border-[#708094] bg-[#12171d] text-[#dce4ed]' : 'border-[#2f2a25] bg-[#fffdf8] text-[#2f2a25]'"
-				aria-label="重設畫面"
 				@click="resetWorkspace"
 			>
 				重設畫面
