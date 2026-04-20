@@ -302,7 +302,7 @@ const templateTextOptionsList = computed<TemplateTextOption[]>(() => {
 		return item;
 	});
 });
-const isDev = import.meta.dev;
+const isDev = import.meta.env.DEV;
 const selectedOverlay = computed(() => overlays.value[activeOverlayIndex.value] ?? null);
 const hasRestoredOverlayState = ref(false);
 
@@ -1220,9 +1220,7 @@ onMounted(() => {
 
 	if (typeof window !== "undefined") {
 		window.addEventListener("pointerdown", onGlobalPointerDown);
-	}
 
-	if (typeof window !== "undefined") {
 		isDark.value = window.matchMedia("(prefers-color-scheme: dark)").matches;
 	}
 
