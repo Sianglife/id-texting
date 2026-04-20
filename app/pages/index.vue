@@ -1,6 +1,6 @@
 ﻿<template>
 	<main class="grid min-h-screen grid-cols-1 gap-4 p-5 lg:grid-cols-[minmax(280px,380px)_1fr]" :class="isDark ? 'bg-[#14181d] text-[#e8edf2]' : 'bg-[#f8f8f6] text-[#2f2a25]'">
-		<section class="rounded-2xl border p-4" :class="isDark ? 'border-[#3a424c] bg-[#1d232b]' : 'border-[#d7ccbf] bg-white'">
+		<section class="rounded-2xl border p-4" :class="isDark ? 'border-[#3a424c] bg-[#1d232b]' : 'border-[#d7ccbf] bg-white'" aria-label="控制面板">
 			<div class="mb-2 flex items-center justify-between gap-2">
 				<h1 class="m-0 my-2 text-2xl">圖上字</h1>
 				<button
@@ -37,6 +37,7 @@
 						:class="isDark ? 'border-[#4f5967] bg-[#131820] text-[#e8edf2]' : 'border-[#cdbfae] bg-white text-[#2f2a25]'"
 						type="file"
 						accept="image/png,image/jpeg,image/webp"
+						aria-label="選擇圖片檔案"
 						@change="onFileSelected"
 					/>
 					<button
@@ -80,10 +81,13 @@
 
 						<div
 							v-if="isTemplatePickerOpen"
+							role="dialog"
+							aria-modal="true"
+							aria-label="選擇文字範本"
 							class="absolute right-0 top-[44px] z-30 w-[280px] rounded-[14px] border p-2.5 shadow-[0_10px_30px_rgba(0,0,0,0.22)]"
 							:class="isDark ? 'border-[#4f5967] bg-[#1a2027] text-[#e8edf2]' : 'border-[#cdbfae] bg-[#fffdf8] text-[#2f2a25]'"
 						>
-							<div class="absolute right-3 top-[-6px] h-3 w-3 rotate-45 border-l border-t" :class="isDark ? 'border-[#4f5967] bg-[#1a2027]' : 'border-[#cdbfae] bg-[#fffdf8]'" />
+							<div aria-hidden="true" class="absolute right-3 top-[-6px] h-3 w-3 rotate-45 border-l border-t" :class="isDark ? 'border-[#4f5967] bg-[#1a2027]' : 'border-[#cdbfae] bg-[#fffdf8]'" />
 							<p class="mb-2 text-xs" :class="isDark ? 'text-[#aab6c4]' : 'text-[#6f6255]'">選一個文字來新增</p>
 							<div class="grid max-h-[220px] gap-1.5 overflow-auto">
 								<button
@@ -127,6 +131,7 @@
 							v-model="item.text"
 							type="text"
 							:placeholder="`輸入文字 ${index + 1}`"
+							:aria-label="`文字框 ${index + 1} 文字內容`"
 							:disabled="!image"
 							@focus="setActiveOverlay(index)"
 						/>
@@ -136,6 +141,7 @@
 							v-model="item.color"
 							type="color"
 							:disabled="!image"
+							:aria-label="`文字框 ${index + 1} 顏色`"
 							:title="`設定文字 ${index + 1} 顏色`"
 							@focus="setActiveOverlay(index)"
 						/>
@@ -144,8 +150,8 @@
 							class="inline-flex h-[38px] w-[38px] items-center justify-center rounded-[10px] border text-base leading-none disabled:cursor-not-allowed disabled:opacity-50"
 							:class="isDark ? 'border-[#4f5967] bg-[#131820] text-[#e8edf2]' : 'border-[#cdbfae] bg-white text-[#2f2a25]'"
 							:disabled="busy || overlays.length <= 1"
-							aria-label="刪除此文字框"
-							title="刪除此文字框"
+							:aria-label="`刪除文字框 ${index + 1}`"
+							:title="`刪除文字框 ${index + 1}`"
 							@click="removeOverlayInput(index)"
 						>
 							×
@@ -163,6 +169,7 @@
 					class="cursor-pointer rounded-[10px] border px-3 py-2 disabled:cursor-not-allowed disabled:opacity-50"
 					:class="isDark ? 'border-[#708094] bg-[#364050] text-[#f0f4f8]' : 'border-[#2f2a25] bg-[#2f2a25] text-[#fffdf8]'"
 					type="button"
+					aria-label="下載圖片（PNG）"
 					:disabled="!image || busy"
 					@click="downloadImage"
 				>
@@ -172,6 +179,7 @@
 					type="button"
 					class="cursor-pointer rounded-[10px] border px-3 py-2 disabled:cursor-not-allowed disabled:opacity-50"
 					:class="isDark ? 'border-[#708094] bg-[#12171d] text-[#dce4ed]' : 'border-[#2f2a25] bg-[#fffdf8] text-[#2f2a25]'"
+					aria-label="複製圖片到剪貼簿"
 					:disabled="!image || busy"
 					@click="copyToClipboard"
 				>
@@ -179,28 +187,31 @@
 				</button>
 			</div>
 
-			<p v-if="status" class="mt-3 rounded-[10px] border px-3 py-2 text-[0.92rem]" :class="isDark ? 'border-[#2f6b4d] bg-[#173526] text-[#9ce5bd]' : 'border-[#9ac7ae] bg-[#eaf7ef] text-[#2d6a4f]'">
+			<p v-if="status" role="status" aria-live="polite" class="mt-3 rounded-[10px] border px-3 py-2 text-[0.92rem]" :class="isDark ? 'border-[#2f6b4d] bg-[#173526] text-[#9ce5bd]' : 'border-[#9ac7ae] bg-[#eaf7ef] text-[#2d6a4f]'">
 				{{ status }}
 			</p>
-			<p v-if="errorMessage" class="mt-3 text-[0.92rem] text-[#9b2226]">{{ errorMessage }}</p>
+			<p v-if="errorMessage" role="alert" class="mt-3 text-[0.92rem] text-[#9b2226]">{{ errorMessage }}</p>
 			<p class="mt-4 text-sm leading-relaxed" :class="isDark ? 'text-[#e7a95d]' : 'text-[#8a4b00]'">此工具完全在你的裝置運行，不會將您的圖片上傳到伺服器，敬請安心使用</p>
 			<button
 				type="button"
 				class="mt-2 cursor-pointer rounded-[10px] border px-3 py-2 text-sm"
 				:class="isDark ? 'border-[#708094] bg-[#12171d] text-[#dce4ed]' : 'border-[#2f2a25] bg-[#fffdf8] text-[#2f2a25]'"
+				aria-label="重設畫面"
 				@click="resetWorkspace"
 			>
 				重設畫面
 			</button>
 		</section>
 
-		<section class="flex flex-col justify-center rounded-2xl border p-4" :class="isDark ? 'border-[#3a424c] bg-[#1d232b]' : 'border-[#d7ccbf] bg-white'" ref="previewHostRef">
+		<section class="flex flex-col justify-center rounded-2xl border p-4" :class="isDark ? 'border-[#3a424c] bg-[#1d232b]' : 'border-[#d7ccbf] bg-white'" aria-label="圖片預覽區域" ref="previewHostRef">
 			<div
 				class="flex min-h-[300px] items-center justify-center overflow-hidden rounded-[14px] border border-dashed"
 				:class="isDark ? 'border-[#4f5967] bg-[#10151b]' : 'border-[#b8a892] bg-[#fdfdfb]'"
 			>
 				<canvas
 					ref="canvasRef"
+					role="application"
+					:aria-label="image ? '圖片預覽畫布，可拖曳文字框調整位置' : '尚未載入圖片'"
 					class="touch-none"
 					:class="image ? 'h-auto max-w-full cursor-grab active:cursor-grabbing' : 'h-[300px] w-full cursor-default'"
 					@pointerdown="onPointerDown"
