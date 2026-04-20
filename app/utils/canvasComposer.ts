@@ -74,7 +74,7 @@ export function renderPreview(options: RenderPreviewOptions): Rect[] {
 	const { canvas, image, overlays, size } = options;
 	const dpr = Math.max(1, options.dpr ?? (typeof window !== "undefined" ? window.devicePixelRatio : 1));
 	const showOverlayGuides = options.showOverlayGuides ?? true;
-	const activeOverlayIndex = options.activeOverlayIndex ?? 0;
+	const activeOverlayIndex = options.activeOverlayIndex ?? -1;
 	const ctx = canvas.getContext("2d");
 
 	if (!ctx) {
@@ -114,8 +114,9 @@ export function renderPreview(options: RenderPreviewOptions): Rect[] {
 	if (showOverlayGuides && activeOverlayIndex >= 0 && activeOverlayIndex < textRects.length) {
 		const activeOverlay = overlays[activeOverlayIndex];
 		const activeRect = textRects[activeOverlayIndex];
+		const activeTextLength = activeOverlay?.text?.length ?? 0;
 
-		if (activeOverlay?.text?.length > 0 && activeRect) {
+		if (activeTextLength > 0 && activeRect) {
 			ctx.save();
 			ctx.strokeStyle = "#fffdf8";
 			ctx.lineWidth = 1;
