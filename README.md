@@ -1,75 +1,71 @@
-# Nuxt Minimal Starter
+# ID Texting
 
-Look at the [Nuxt documentation](https://nuxt.com/docs/getting-started/introduction) to learn more.
+ID Texting is a Nuxt-based image text editor for adding text on photos, cards, and ID-style layouts. 
+It is designed for quick text placement, drag-and-resize editing, and export-friendly composition on top of uploaded images.
 
-## Setup
+## Intro
 
-Make sure to install dependencies:
+The app focuses on two common use cases:
+
+- adding text on top of an image, such as a poster, screenshot, or photo
+- placing ID-style labels and date marks on document-like layouts
+
+The editor runs fully in the browser. Images are processed locally, so nothing needs to be uploaded to a server.
+
+## Online Use
+
+You can use the app immediately here:
+
+- [sianglife.github.io/id-texting/](https://sianglife.github.io/id-texting/)
+
+## Get Started
+
+Install dependencies:
 
 ```bash
-# npm
-npm install
-
-# pnpm
 pnpm install
-
-# yarn
-yarn install
-
-# bun
-bun install
 ```
 
-## Development Server
-
-Start the development server on `http://localhost:3000`:
+Start the development server:
 
 ```bash
-# npm
-npm run dev
-
-# pnpm
 pnpm dev
-
-# yarn
-yarn dev
-
-# bun
-bun run dev
 ```
 
-## Production
+Open the app at `http://localhost:3000`.
 
-Build the application for production:
+Build for production:
 
 ```bash
-# npm
-npm run build
-
-# pnpm
 pnpm build
-
-# yarn
-yarn build
-
-# bun
-bun run build
 ```
 
-Locally preview production build:
+Preview the production build locally:
 
 ```bash
-# npm
-npm run preview
-
-# pnpm
 pnpm preview
-
-# yarn
-yarn preview
-
-# bun
-bun run preview
 ```
 
-Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.
+## Project Structure
+
+- [app/app.vue](app/app.vue) sets up the global app shell and styling entry point.
+- [app/pages/index.vue](app/pages/index.vue) contains the main editor UI, image upload flow, text overlay controls, and export actions.
+- [app/utils/canvasComposer.ts](app/utils/canvasComposer.ts) handles canvas sizing, rendering, drag hit testing, and PNG export.
+- [app/data/textTemplates.json](app/data/textTemplates.json) stores the preset text templates, including ID-style and date-related entries.
+- [app/assets/css/main.css](app/assets/css/main.css) contains the global visual styling.
+- [public/](public/) stores static assets served directly by Nuxt.
+
+## Notes
+
+- The editor supports both manual text entry and preset text templates.
+- Text can be repositioned directly on the canvas and resized with the drag handle.
+- The current implementation keeps the workflow simple: upload an image, add text, adjust placement, and export the result.
+
+## Scripts
+
+```bash
+pnpm dev
+pnpm build
+pnpm preview
+pnpm generate
+```
